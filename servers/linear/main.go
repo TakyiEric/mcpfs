@@ -15,6 +15,7 @@ package main
 
 import (
 	"bytes"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -23,7 +24,11 @@ import (
 	"strings"
 
 	"github.com/airshelf/mcpfs/pkg/mcpserve"
+	"github.com/airshelf/mcpfs/pkg/mcptool"
 )
+
+//go:embed tools.json
+var toolSchemas []byte
 
 var token string
 
@@ -296,6 +301,18 @@ func main() {
 	if token == "" {
 		fmt.Fprintln(os.Stderr, "mcpfs-linear: LINEAR_API_KEY env var required")
 		os.Exit(1)
+	}
+
+	// CLI tool dispatch mode: mcpfs-linear <tool-name> [--flags]
+	if len(os.Args) > 1 {
+		var tools []mcptool.ToolDef
+		json.Unmarshal(toolSchemas, &tools)
+		caller := &mcptool.StdioCaller{
+			Command: "npx",
+			Args:    []string{"@modelcontextprotocol/server-linear"},
+		}
+		defer caller.Close()
+		os.Exit(mcptool.Run("mcpfs-linear", tools, caller, os.Args[1:]))
 	}
 
 	srv := mcpserve.New("mcpfs-linear", "0.1.0", readResource)

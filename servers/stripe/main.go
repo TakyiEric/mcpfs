@@ -19,6 +19,7 @@
 package main
 
 import (
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -27,7 +28,11 @@ import (
 	"strings"
 
 	"github.com/airshelf/mcpfs/pkg/mcpserve"
+	"github.com/airshelf/mcpfs/pkg/mcptool"
 )
+
+//go:embed tools.json
+var toolSchemas []byte
 
 var apiKey string
 
@@ -47,6 +52,13 @@ func stripeGet(path string) (json.RawMessage, error) {
 		return nil, fmt.Errorf("stripe %d: %s", resp.StatusCode, truncate(string(body), 200))
 	}
 	return body, nil
+}
+
+func mcpURL() string {
+	if u := os.Getenv("STRIPE_MCP_URL"); u != "" {
+		return u
+	}
+	return "https://mcp.stripe.com"
 }
 
 func truncate(s string, n int) string {
@@ -131,6 +143,17 @@ func main() {
 	if apiKey == "" {
 		fmt.Fprintln(os.Stderr, "mcpfs-stripe: STRIPE_API_KEY env var required")
 		os.Exit(1)
+	}
+
+	// CLI tool dispatch mode: mcpfs-stripe <tool-name> [--flags]
+	if len(os.Args) > 1 {
+		var tools []mcptool.ToolDef
+		json.Unmarshal(toolSchemas, &tools)
+		caller := &mcptool.HTTPCaller{
+			URL:        mcpURL(),
+			AuthHeader: "Bearer " + apiKey,
+		}
+		os.Exit(mcptool.Run("mcpfs-stripe", tools, caller, os.Args[1:]))
 	}
 
 	srv := mcpserve.New("mcpfs-stripe", "0.1.0", readResource)

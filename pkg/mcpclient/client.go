@@ -164,6 +164,46 @@ func (c *Client) ReadResource(uri string) (string, string, error) {
 	return out.Contents[0].Text, out.Contents[0].MimeType, nil
 }
 
+// ListTools calls tools/list and returns the tool definitions.
+func (c *Client) ListTools() (json.RawMessage, error) {
+	result, err := c.call("tools/list", map[string]interface{}{})
+	if err != nil {
+		return nil, err
+	}
+	var out struct {
+		Tools json.RawMessage `json:"tools"`
+	}
+	if err := json.Unmarshal(result, &out); err != nil {
+		return nil, err
+	}
+	return out.Tools, nil
+}
+
+// CallTool calls tools/call with the given tool name and arguments.
+func (c *Client) CallTool(name string, args map[string]interface{}) (json.RawMessage, error) {
+	result, err := c.call("tools/call", map[string]interface{}{
+		"name":      name,
+		"arguments": args,
+	})
+	if err != nil {
+		return nil, err
+	}
+	// MCP tools/call result has content[] with text blocks.
+	var out struct {
+		Content []struct {
+			Type string `json:"type"`
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	if err := json.Unmarshal(result, &out); err != nil {
+		return nil, err
+	}
+	if len(out.Content) > 0 {
+		return json.RawMessage(out.Content[0].Text), nil
+	}
+	return json.RawMessage("{}"), nil
+}
+
 // Close kills the server subprocess.
 func (c *Client) Close() {
 	c.stdin.Close()

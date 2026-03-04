@@ -1,9 +1,13 @@
-// capture-tools connects to an HTTP MCP server and saves its tool definitions.
-// Supports Streamable HTTP transport (SSE responses, session management).
+// capture-tools connects to an MCP server and saves its tool definitions.
+// Supports HTTP (SSE/JSON) and stdio transports.
 //
 // Usage:
 //
+//	# HTTP transport
 //	go run ./cmd/capture-tools -url https://mcp.posthog.com/mcp -auth "Bearer $KEY" -out tools.json
+//
+//	# Stdio transport
+//	go run ./cmd/capture-tools -cmd npx -args @modelcontextprotocol/server-linear -out tools.json
 package main
 
 import (
@@ -15,50 +19,41 @@ import (
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/airshelf/mcpfs/pkg/mcpclient"
 )
 
 var sessionID string
 
 func main() {
-	url := flag.String("url", "", "MCP server URL (required)")
-	auth := flag.String("auth", "", "Authorization header value")
+	url := flag.String("url", "", "MCP server URL (HTTP transport)")
+	auth := flag.String("auth", "", "Authorization header value (HTTP)")
+	cmd := flag.String("cmd", "", "Command to launch (stdio transport)")
+	cmdArgs := flag.String("args", "", "Space-separated args for -cmd")
 	out := flag.String("out", "tools.json", "Output file path")
 	flag.Parse()
 
-	if *url == "" {
-		fmt.Fprintln(os.Stderr, "capture-tools: -url required")
+	if *url == "" && *cmd == "" {
+		fmt.Fprintln(os.Stderr, "capture-tools: -url or -cmd required")
 		os.Exit(1)
 	}
 
-	// Initialize.
-	_, err := rpc(*url, *auth, 1, "initialize", map[string]interface{}{
-		"protocolVersion": "2025-03-26",
-		"capabilities":    map[string]interface{}{},
-		"clientInfo":      map[string]string{"name": "capture-tools", "version": "0.1.0"},
-	})
+	var toolsJSON json.RawMessage
+	var err error
+
+	if *cmd != "" {
+		toolsJSON, err = captureStdio(*cmd, *cmdArgs)
+	} else {
+		toolsJSON, err = captureHTTP(*url, *auth)
+	}
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "capture-tools: initialize: %v\n", err)
-		os.Exit(1)
-	}
-
-	// List tools.
-	result, err := rpc(*url, *auth, 2, "tools/list", map[string]interface{}{})
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "capture-tools: tools/list: %v\n", err)
-		os.Exit(1)
-	}
-
-	var toolsResult struct {
-		Tools json.RawMessage `json:"tools"`
-	}
-	if err := json.Unmarshal(result, &toolsResult); err != nil {
-		fmt.Fprintf(os.Stderr, "capture-tools: parse: %v\n", err)
+		fmt.Fprintf(os.Stderr, "capture-tools: %v\n", err)
 		os.Exit(1)
 	}
 
 	// Pretty-print and write.
 	var tools interface{}
-	json.Unmarshal(toolsResult.Tools, &tools)
+	json.Unmarshal(toolsJSON, &tools)
 	pretty, _ := json.MarshalIndent(tools, "", "  ")
 
 	if err := os.WriteFile(*out, pretty, 0644); err != nil {
@@ -67,8 +62,49 @@ func main() {
 	}
 
 	var list []interface{}
-	json.Unmarshal(toolsResult.Tools, &list)
+	json.Unmarshal(toolsJSON, &list)
 	fmt.Fprintf(os.Stderr, "capture-tools: wrote %d tools to %s\n", len(list), *out)
+}
+
+func captureStdio(command, argsStr string) (json.RawMessage, error) {
+	var args []string
+	if argsStr != "" {
+		args = strings.Fields(argsStr)
+	}
+
+	client, err := mcpclient.New(command, args)
+	if err != nil {
+		return nil, fmt.Errorf("launch %s: %w", command, err)
+	}
+	defer client.Close()
+
+	return client.ListTools()
+}
+
+func captureHTTP(url, auth string) (json.RawMessage, error) {
+	// Initialize.
+	_, err := rpc(url, auth, 1, "initialize", map[string]interface{}{
+		"protocolVersion": "2025-03-26",
+		"capabilities":    map[string]interface{}{},
+		"clientInfo":      map[string]string{"name": "capture-tools", "version": "0.1.0"},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("initialize: %w", err)
+	}
+
+	// List tools.
+	result, err := rpc(url, auth, 2, "tools/list", map[string]interface{}{})
+	if err != nil {
+		return nil, fmt.Errorf("tools/list: %w", err)
+	}
+
+	var toolsResult struct {
+		Tools json.RawMessage `json:"tools"`
+	}
+	if err := json.Unmarshal(result, &toolsResult); err != nil {
+		return nil, fmt.Errorf("parse: %w", err)
+	}
+	return toolsResult.Tools, nil
 }
 
 // rpc sends a JSON-RPC request and handles both SSE and plain JSON responses.

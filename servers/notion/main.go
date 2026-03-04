@@ -15,6 +15,7 @@ package main
 
 import (
 	"bytes"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -23,7 +24,11 @@ import (
 	"strings"
 
 	"github.com/airshelf/mcpfs/pkg/mcpserve"
+	"github.com/airshelf/mcpfs/pkg/mcptool"
 )
+
+//go:embed tools.json
+var toolSchemas []byte
 
 var apiKey string
 
@@ -54,6 +59,13 @@ func notionRequest(method, path string, body interface{}) (json.RawMessage, erro
 		return nil, fmt.Errorf("notion %d: %s", resp.StatusCode, truncate(string(respBody), 200))
 	}
 	return respBody, nil
+}
+
+func mcpURL() string {
+	if u := os.Getenv("NOTION_MCP_URL"); u != "" {
+		return u
+	}
+	return "https://mcp.notion.com/mcp"
 }
 
 func truncate(s string, n int) string {
@@ -271,6 +283,17 @@ func main() {
 	if apiKey == "" {
 		fmt.Fprintln(os.Stderr, "mcpfs-notion: NOTION_API_KEY env var required")
 		os.Exit(1)
+	}
+
+	// CLI tool dispatch mode: mcpfs-notion <tool-name> [--flags]
+	if len(os.Args) > 1 {
+		var tools []mcptool.ToolDef
+		json.Unmarshal(toolSchemas, &tools)
+		caller := &mcptool.HTTPCaller{
+			URL:        mcpURL(),
+			AuthHeader: "Bearer " + apiKey,
+		}
+		os.Exit(mcptool.Run("mcpfs-notion", tools, caller, os.Args[1:]))
 	}
 
 	srv := mcpserve.New("mcpfs-notion", "0.1.0", readResource)
