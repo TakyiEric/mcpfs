@@ -33,16 +33,47 @@ go build -o mcpfs-github ./servers/github  # build a server
 
 ## Server modes
 
-Each server binary runs in one of three modes:
+Each server binary runs in one of two modes:
 1. **No args** → MCP resource server (stdio, for FUSE reads)
-2. **Tool name** → CLI tool proxy (parses flags, calls upstream MCP)
-3. **`tools`** → List available write operations
+2. **Subcommand** → CLI tool proxy (parses flags, proxies to upstream MCP)
 
 ```bash
 mcpfs-linear                    # mode 1: MCP server (used by mcpfs)
-mcpfs-linear tools              # mode 3: list available tools
+mcpfs-linear --help             # list available tools
 mcpfs-linear create_issue ...   # mode 2: execute a tool
 ```
+
+## Write architecture
+
+Two patterns for writes:
+- **Proxy** (PostHog, GitHub, Stripe, Vercel, Linear): tool schemas captured from upstream HTTP/stdio MCP, embedded via `//go:embed tools.json`, proxied via `mcptool.HTTPCaller` or `mcptool.StdioCaller`.
+- **Native CLI** (Docker, K8s): no upstream MCP exists. Use `docker` / `kubectl` directly. These servers are read-only.
+
+All proxy servers follow the same pattern in main():
+```go
+//go:embed tools.json
+var toolSchemas []byte
+
+if len(os.Args) > 1 {
+    var tools []mcptool.ToolDef
+    json.Unmarshal(toolSchemas, &tools)
+    caller := &mcptool.HTTPCaller{URL: mcpURL(), AuthHeader: "Bearer " + token}
+    os.Exit(mcptool.Run("mcpfs-myservice", tools, caller, os.Args[1:]))
+}
+```
+
+## Current tool counts
+
+| Server | Tools | Transport |
+|--------|-------|-----------|
+| posthog | 67 | HTTP proxy |
+| github | 43 | HTTP proxy |
+| stripe | 28 | HTTP proxy |
+| vercel | 12 | HTTP proxy |
+| linear | 7 | stdio proxy |
+| notion | 0 (needs OAuth) | HTTP proxy (wired) |
+| docker | — | use `docker` CLI |
+| k8s | — | use `kubectl` |
 
 ## Adding a new server
 

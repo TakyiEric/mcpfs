@@ -1,0 +1,381 @@
+[
+  {
+    "annotations": {
+      "readOnlyHint": true,
+      "title": "Search Vercel Documentation"
+    },
+    "description": "Search the Vercel documentation.\n  \n  Use this tool to answer any questions about Vercel’s platform, features, and best practices, including:\n  - Core Concepts: Projects, Deployments, Git Integration, Preview Deployments, Environments\n  - Frontend \u0026 Frameworks: Next.js, SvelteKit, Nuxt, Astro, Remix, frameworks configuration and optimization\n  - APIs: REST API, Vercel SDK, Build Output API\n  - Compute: Fluid Compute, Functions, Routing Middleware, Cron Jobs, OG Image Generation, Sandbox, Data Cache\n  - AI: Vercel AI SDK, AI Gateway, MCP, v0\n  - Performance \u0026 Delivery: Edge Network, Caching, CDN, Image Optimization, Headers, Redirects, Rewrites\n  - Pricing: Plans, Spend Management, Billing\n  - Security: Audit Logs, Firewall, Bot Management, BotID, OIDC, RBAC, Secure Compute, 2FA\n  - Storage: Blog, Edge Config",
+    "execution": {
+      "taskSupport": "forbidden"
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "tokens": {
+          "default": 2500,
+          "description": "Maximum number of tokens to include in the result. Default is 2500.",
+          "type": "number"
+        },
+        "topic": {
+          "description": "Topic to focus the documentation search on (e.g., 'routing', 'data-fetching').",
+          "type": "string"
+        }
+      },
+      "required": [
+        "topic"
+      ],
+      "type": "object"
+    },
+    "name": "search_vercel_documentation"
+  },
+  {
+    "description": "Deploy the current project to Vercel",
+    "execution": {
+      "taskSupport": "forbidden"
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "properties": {},
+      "type": "object"
+    },
+    "name": "deploy_to_vercel"
+  },
+  {
+    "annotations": {
+      "readOnlyHint": true
+    },
+    "description": "List all Vercel projects for a user (with a max of 50). Use this to help discover the Project ID of the project that the user is working on.",
+    "execution": {
+      "taskSupport": "forbidden"
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "teamId": {
+          "description": "The team ID to get the deployment events for. Alternatively the team slug can be used.\nTeam IDs start with \"team_\".\nIf you do not know the team ID or slug, it can be found through these mechanism:\n- Read the file .vercel/project.json if it exists and extract the orgId\n- Use the `list_teams` tool",
+          "type": "string"
+        }
+      },
+      "required": [
+        "teamId"
+      ],
+      "type": "object"
+    },
+    "name": "list_projects"
+  },
+  {
+    "annotations": {
+      "readOnlyHint": true
+    },
+    "description": "Get a specific project in Vercel",
+    "execution": {
+      "taskSupport": "forbidden"
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "projectId": {
+          "description": "The project ID to get the deployment events for. Alternatively the project slug can be used.\nProject IDs start with \"prj_\".\nIf you do not know the project ID or slug, it can be found through these mechanism:\n- Read the file .vercel/project.json if it exists and extract the projectId\n- Use the `list_projects` tool",
+          "type": "string"
+        },
+        "teamId": {
+          "description": "The team ID to get the deployment events for. Alternatively the team slug can be used.\nTeam IDs start with \"team_\".\nIf you do not know the team ID or slug, it can be found through these mechanism:\n- Read the file .vercel/project.json if it exists and extract the orgId\n- Use the `list_teams` tool",
+          "type": "string"
+        }
+      },
+      "required": [
+        "projectId",
+        "teamId"
+      ],
+      "type": "object"
+    },
+    "name": "get_project"
+  },
+  {
+    "annotations": {
+      "readOnlyHint": true
+    },
+    "description": "List all deployments for a project",
+    "execution": {
+      "taskSupport": "forbidden"
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "projectId": {
+          "description": "The project ID to list deployments for.",
+          "type": "string"
+        },
+        "since": {
+          "description": "Get deployments created after this timestamp.",
+          "type": "number"
+        },
+        "teamId": {
+          "description": "The team ID to list deployments for.",
+          "type": "string"
+        },
+        "until": {
+          "description": "Get deployments created before this timestamp.",
+          "type": "number"
+        }
+      },
+      "required": [
+        "projectId",
+        "teamId"
+      ],
+      "type": "object"
+    },
+    "name": "list_deployments"
+  },
+  {
+    "annotations": {
+      "readOnlyHint": true
+    },
+    "description": "Get a specific deployment by ID or URL.",
+    "execution": {
+      "taskSupport": "forbidden"
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "idOrUrl": {
+          "description": "The unique identifier or hostname of the deployment.",
+          "type": "string"
+        },
+        "teamId": {
+          "description": "The team ID to get the deployment events for. Alternatively the team slug can be used.\nTeam IDs start with \"team_\".\nIf you do not know the team ID or slug, it can be found through these mechanism:\n- Read the file .vercel/project.json if it exists and extract the orgId\n- Use the `list_teams` tool",
+          "type": "string"
+        }
+      },
+      "required": [
+        "idOrUrl",
+        "teamId"
+      ],
+      "type": "object"
+    },
+    "name": "get_deployment"
+  },
+  {
+    "annotations": {
+      "readOnlyHint": true
+    },
+    "description": "Get the build logs of a deployment by deployment ID or URL. Can be used to investigate why a deployment failed. It can work as an infinite stream of logs or as a JSON endpoint depending on the input parameters.",
+    "execution": {
+      "taskSupport": "forbidden"
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "idOrUrl": {
+          "description": "The unique identifier or hostname of the deployment.",
+          "type": "string"
+        },
+        "limit": {
+          "default": 100,
+          "description": "Maximum number of log lines to return. Defaults is 100.",
+          "type": "number"
+        },
+        "teamId": {
+          "description": "The team ID to get the deployment events for. Alternatively the team slug can be used.\nTeam IDs start with \"team_\".\nIf you do not know the team ID or slug, it can be found through these mechanism:\n- Read the file .vercel/project.json if it exists and extract the orgId\n- Use the `list_teams` tool",
+          "type": "string"
+        }
+      },
+      "required": [
+        "idOrUrl",
+        "teamId"
+      ],
+      "type": "object"
+    },
+    "name": "get_deployment_build_logs"
+  },
+  {
+    "annotations": {
+      "readOnlyHint": true
+    },
+    "description": "Get runtime logs for a project or deployment. Runtime logs show application output (console.log, errors, etc.) from serverless functions and edge functions during execution. Supports filtering by environment, log level, status code, source, time range, and full-text search. Useful for debugging runtime issues, monitoring application behavior, and investigating errors in production.",
+    "execution": {
+      "taskSupport": "forbidden"
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "deploymentId": {
+          "description": "Filter logs to a specific deployment ID or URL.",
+          "type": "string"
+        },
+        "environment": {
+          "description": "Filter by environment: \"production\" or \"preview\".",
+          "enum": [
+            "production",
+            "preview"
+          ],
+          "type": "string"
+        },
+        "level": {
+          "description": "Filter by log level(s). Can specify multiple levels.",
+          "items": {
+            "enum": [
+              "error",
+              "warning",
+              "info",
+              "fatal"
+            ],
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "limit": {
+          "description": "Maximum number of log entries to return. Defaults to 50, max 1000.",
+          "type": "number"
+        },
+        "projectId": {
+          "description": "The project ID to get runtime logs for.",
+          "type": "string"
+        },
+        "query": {
+          "description": "Full-text search query to filter logs.",
+          "type": "string"
+        },
+        "requestId": {
+          "description": "Filter by specific request ID.",
+          "type": "string"
+        },
+        "since": {
+          "description": "Start time - ISO format or relative time (e.g., \"1h\", \"30m\", \"7d\"). Defaults to 24 hours ago.",
+          "type": "string"
+        },
+        "source": {
+          "description": "Filter by source type(s). Can specify multiple sources.",
+          "items": {
+            "enum": [
+              "serverless",
+              "edge-function",
+              "edge-middleware",
+              "static"
+            ],
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "statusCode": {
+          "description": "Filter by HTTP status code (e.g., \"500\", \"4xx\").",
+          "type": "string"
+        },
+        "teamId": {
+          "description": "The team ID to get the deployment events for. Alternatively the team slug can be used.\nTeam IDs start with \"team_\".\nIf you do not know the team ID or slug, it can be found through these mechanism:\n- Read the file .vercel/project.json if it exists and extract the orgId\n- Use the `list_teams` tool",
+          "type": "string"
+        },
+        "until": {
+          "description": "End time - ISO format or relative time. Defaults to now.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "projectId",
+        "teamId"
+      ],
+      "type": "object"
+    },
+    "name": "get_runtime_logs"
+  },
+  {
+    "annotations": {
+      "readOnlyHint": true
+    },
+    "description": "Creates a temporary shareable link that bypasses authentication for protected Vercel deployments.\n\n  When you encounter a Vercel deployment URL (like https://myapp-abc123.vercel.app), \n  you might receive a 403 (Forbidden) error when trying to access it. \n\n  This tool generates a special URL with a '_vercel_share' parameter that allows temporary access \n  without requiring login credentials. The shareable URL will expire in 23 hours.\n  \n  When you use the returned URL, that URL will redirect and set an auth cookie.\n  If your fetch implementation does not support cookies, use the 'web_fetch_vercel_url' tool instead.",
+    "execution": {
+      "taskSupport": "forbidden"
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "url": {
+          "description": "The full URL of the Vercel deployment (e.g. \"https://myapp.vercel.app\").",
+          "type": "string"
+        }
+      },
+      "required": [
+        "url"
+      ],
+      "type": "object"
+    },
+    "name": "get_access_to_vercel_url"
+  },
+  {
+    "annotations": {
+      "readOnlyHint": true
+    },
+    "description": "Fetches a Vercel deployment URL and returns the response.\n  This is useful if another web fetch tool returns 401 (Unauthorized) or 403 (Forbidden) for a Vercel URL.\n  Supports accessing deployments protected with Vercel Authentication which the user of this MCP server has access to.",
+    "execution": {
+      "taskSupport": "forbidden"
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "url": {
+          "description": "The full URL of the Vercel deployment including the path (e.g. \"https://myapp.vercel.app/my-page\").",
+          "type": "string"
+        }
+      },
+      "required": [
+        "url"
+      ],
+      "type": "object"
+    },
+    "name": "web_fetch_vercel_url"
+  },
+  {
+    "annotations": {
+      "readOnlyHint": true
+    },
+    "description": "List the user's teams. Use this to help discover the Team ID of the teams that the user is part of.",
+    "execution": {
+      "taskSupport": "forbidden"
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "properties": {},
+      "type": "object"
+    },
+    "name": "list_teams"
+  },
+  {
+    "annotations": {
+      "readOnlyHint": true
+    },
+    "description": "Check if domain names are available for purchase and get pricing information",
+    "execution": {
+      "taskSupport": "forbidden"
+    },
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "names": {
+          "description": "Array of domain names to check availability for (e.g., [\"example.com\", \"test.org\"])",
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 10,
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "names"
+      ],
+      "type": "object"
+    },
+    "name": "check_domain_availability_and_price"
+  }
+]

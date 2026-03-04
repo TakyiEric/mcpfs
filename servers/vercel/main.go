@@ -16,7 +16,7 @@
 package main
 
 import (
-	"bytes"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -28,6 +28,9 @@ import (
 	"github.com/airshelf/mcpfs/pkg/mcpserve"
 	"github.com/airshelf/mcpfs/pkg/mcptool"
 )
+
+//go:embed tools.json
+var toolSchemas []byte
 
 var (
 	token  string
@@ -300,142 +303,23 @@ func readProjectResource(uri string) (mcpserve.ReadResult, error) {
 	}
 }
 
-func vercelPost(path string, body interface{}) (json.RawMessage, error) {
-	data, _ := json.Marshal(body)
-	u := "https://api.vercel.com" + path
-	if teamID != "" {
-		sep := "?"
-		if strings.Contains(path, "?") {
-			sep = "&"
-		}
-		u += sep + "teamId=" + url.QueryEscape(teamID)
+func mcpURL() string {
+	if u := os.Getenv("VERCEL_MCP_URL"); u != "" {
+		return u
 	}
-	req, _ := http.NewRequest("POST", u, bytes.NewReader(data))
-	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	out, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("Vercel API %d: %s", resp.StatusCode, string(out[:min(len(out), 200)]))
-	}
-	return json.RawMessage(out), nil
-}
-
-func vercelDelete(path string) (json.RawMessage, error) {
-	u := "https://api.vercel.com" + path
-	if teamID != "" {
-		sep := "?"
-		if strings.Contains(path, "?") {
-			sep = "&"
-		}
-		u += sep + "teamId=" + url.QueryEscape(teamID)
-	}
-	req, _ := http.NewRequest("DELETE", u, nil)
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	out, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("Vercel API %d: %s", resp.StatusCode, string(out[:min(len(out), 200)]))
-	}
-	if len(out) == 0 {
-		return json.RawMessage(`{"status":"ok"}`), nil
-	}
-	return json.RawMessage(out), nil
-}
-
-var vercelTools = []mcptool.ToolDef{
-	{
-		Name:        "redeploy",
-		Description: "Redeploy an existing deployment",
-		InputSchema: mcptool.BuildSchema([]mcptool.ParamDef{
-			{Name: "url", Type: "string", Desc: "Deployment URL to redeploy", Required: true},
-			{Name: "target", Type: "string", Desc: "Target environment: production or preview"},
-		}),
-	},
-	{
-		Name:        "set-env",
-		Description: "Create or update an environment variable for a project",
-		InputSchema: mcptool.BuildSchema([]mcptool.ParamDef{
-			{Name: "project", Type: "string", Desc: "Project name or ID", Required: true},
-			{Name: "key", Type: "string", Desc: "Environment variable name", Required: true},
-			{Name: "value", Type: "string", Desc: "Environment variable value", Required: true},
-			{Name: "target", Type: "string", Desc: "Targets: production,preview,development (comma-separated, default: all)"},
-		}),
-	},
-	{
-		Name:        "delete-env",
-		Description: "Delete an environment variable from a project",
-		InputSchema: mcptool.BuildSchema([]mcptool.ParamDef{
-			{Name: "project", Type: "string", Desc: "Project name or ID", Required: true},
-			{Name: "id", Type: "string", Desc: "Environment variable ID", Required: true},
-		}),
-	},
-	{
-		Name:        "add-domain",
-		Description: "Add a domain to a project",
-		InputSchema: mcptool.BuildSchema([]mcptool.ParamDef{
-			{Name: "project", Type: "string", Desc: "Project name or ID", Required: true},
-			{Name: "domain", Type: "string", Desc: "Domain name to add", Required: true},
-		}),
-	},
-}
-
-type vercelCaller struct{}
-
-func (c *vercelCaller) Call(toolName string, args map[string]interface{}) (json.RawMessage, error) {
-	s := func(key string) string { v, _ := args[key].(string); return v }
-
-	switch toolName {
-	case "redeploy":
-		id, err := resolveDeploymentID(s("url"))
-		if err != nil {
-			return nil, err
-		}
-		body := map[string]interface{}{"deploymentId": id, "meta": map[string]string{"action": "redeploy"}}
-		if t := s("target"); t != "" {
-			body["target"] = t
-		}
-		return vercelPost("/v13/deployments", body)
-
-	case "set-env":
-		targets := []string{"production", "preview", "development"}
-		if t := s("target"); t != "" {
-			targets = strings.Split(t, ",")
-		}
-		body := map[string]interface{}{
-			"key":    s("key"),
-			"value":  s("value"),
-			"target": targets,
-			"type":   "encrypted",
-		}
-		return vercelPost("/v10/projects/"+url.PathEscape(s("project"))+"/env", body)
-
-	case "delete-env":
-		return vercelDelete("/v10/projects/" + url.PathEscape(s("project")) + "/env/" + url.PathEscape(s("id")))
-
-	case "add-domain":
-		body := map[string]interface{}{"name": s("domain")}
-		return vercelPost("/v10/projects/"+url.PathEscape(s("project"))+"/domains", body)
-
-	default:
-		return nil, fmt.Errorf("unknown tool: %s", toolName)
-	}
+	return "https://mcp.vercel.com"
 }
 
 func main() {
 	// CLI tool dispatch mode: mcpfs-vercel <tool-name> [--flags]
 	if len(os.Args) > 1 {
-		os.Exit(mcptool.Run("mcpfs-vercel", vercelTools, &vercelCaller{}, os.Args[1:]))
+		var tools []mcptool.ToolDef
+		json.Unmarshal(toolSchemas, &tools)
+		caller := &mcptool.HTTPCaller{
+			URL:        mcpURL(),
+			AuthHeader: "Bearer " + token,
+		}
+		os.Exit(mcptool.Run("mcpfs-vercel", tools, caller, os.Args[1:]))
 	}
 
 	srv := mcpserve.New("mcpfs-vercel", "0.1.0", readResource)
