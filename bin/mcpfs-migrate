@@ -86,7 +86,7 @@ scan_plugins() {
 
     # Find matching key in enabledPlugins (case-insensitive substring)
     local key
-    key=$(jq -r ".enabledPlugins // {} | keys[] | select(test(\"$name\"; \"i\"))" "$SETTINGS" 2>/dev/null | head -1)
+    key=$(jq -r --arg svc "$name" '.enabledPlugins // {} | keys[] | select(test($svc; "i"))' "$SETTINGS" 2>/dev/null | head -1)
 
     if [[ -z "$key" ]]; then
       results+=("$name|$has_skills|$tool_count|not_found|")
@@ -94,7 +94,7 @@ scan_plugins() {
     fi
 
     local enabled
-    enabled=$(jq -r ".enabledPlugins[\"$key\"]" "$SETTINGS")
+    enabled=$(jq -r --arg k "$key" '.enabledPlugins[$k]' "$SETTINGS")
 
     if [[ "$enabled" == "true" ]]; then
       if [[ "$has_skills" == "yes" ]]; then
@@ -109,17 +109,6 @@ scan_plugins() {
   printf '%s\n' "${results[@]}"
 }
 
-# Count tokens saved (rough: ~300 tokens per tool)
-tokens_saved() {
-  local total=0
-  while IFS='|' read -r name has_skills tool_count action key; do
-    if [[ "$action" == "disable" ]]; then
-      total=$((total + tool_count * 300))
-    fi
-  done
-  echo "$total"
-}
-
 # Preview mode
 preview() {
   local scan
@@ -129,15 +118,16 @@ preview() {
   local saved=0
 
   if $JSON; then
-    local items=()
+    local json_arr="[]"
     while IFS='|' read -r name has_skills tool_count action key; do
-      items+=("{\"service\":\"$name\",\"tools\":$tool_count,\"action\":\"$action\",\"has_skills\":$( [[ "$has_skills" == "yes" ]] && echo true || echo false ),\"plugin_key\":\"$key\"}")
+      local skills_bool=false
+      [[ "$has_skills" == "yes" ]] && skills_bool=true
+      json_arr=$(echo "$json_arr" | jq --arg svc "$name" --argjson tools "$tool_count" \
+        --arg act "$action" --argjson sk "$skills_bool" --arg pk "$key" \
+        '. + [{"service":$svc,"tools":$tools,"action":$act,"has_skills":$sk,"plugin_key":$pk}]')
       [[ "$action" == "disable" ]] && saved=$((saved + tool_count * 300))
     done <<< "$scan"
-    local joined
-    joined=$(printf ',%s' "${items[@]}")
-    joined="${joined:1}"
-    echo "{\"mode\":\"preview\",\"plugins\":[$joined],\"tokens_saved\":$saved}"
+    echo "$json_arr" | jq --argjson ts "$saved" '{mode:"preview",plugins:.,tokens_saved:$ts}'
     return
   fi
 
@@ -203,7 +193,7 @@ apply() {
 
   while IFS='|' read -r name has_skills tool_count action key; do
     if [[ "$action" == "disable" ]]; then
-      jq ".enabledPlugins[\"$key\"] = false" "$tmp" > "$tmp.new" && mv "$tmp.new" "$tmp"
+      jq --arg k "$key" '.enabledPlugins[$k] = false' "$tmp" > "$tmp.new" && mv "$tmp.new" "$tmp"
       disable_count=$((disable_count + 1))
       saved=$((saved + tool_count * 300))
       $JSON || echo "  ✓ Disabled $name plugin"
@@ -219,7 +209,8 @@ apply() {
   fi
 
   if $JSON; then
-    echo "{\"mode\":\"apply\",\"status\":\"success\",\"disabled\":$disable_count,\"tokens_saved\":$saved,\"backup\":\"$BACKUP\"}"
+    jq -n --argjson d "$disable_count" --argjson ts "$saved" --arg bk "$BACKUP" \
+      '{mode:"apply",status:"success",disabled:$d,tokens_saved:$ts,backup:$bk}'
   else
     echo ""
     echo "Done. $disable_count plugin(s) disabled, ~$((saved / 1000)),000 tokens saved."

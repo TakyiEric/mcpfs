@@ -88,7 +88,7 @@ if len(os.Args) > 1 {
 
 1. Capture tool schemas: `go run ./cmd/capture-tools -url <mcp-url> -auth "Bearer $KEY" -out servers/myservice/tools.json`
 2. Add `//go:embed tools.json` + CLI dispatch block to main.go (see posthog/linear for pattern)
-3. Test: `mcpfs-myservice tools` then `mcpfs-myservice <tool-name> --help`
+3. Test: `mcpfs-myservice --help` then `mcpfs-myservice <tool-name> --help`
 
 ## Testing
 
