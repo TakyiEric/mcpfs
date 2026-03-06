@@ -105,11 +105,11 @@ func TestRequiredParamsMalformedRequiredNoProperties(t *testing.T) {
 }
 
 func TestClassifyToolAmbiguousNoParams(t *testing.T) {
-	// "get-settings" contains "set" which is a write verb — classified as ToolWrite.
-	// This is a known limitation of substring matching.
+	// "get-settings" — "settings" is a separate segment, "set" does NOT match.
+	// Segment-based matching avoids false positives from substrings.
 	got := ClassifyTool("get-settings", schema(nil, nil))
-	if got != ToolWrite {
-		t.Errorf("ClassifyTool(get-settings, no required) = %v, want ToolWrite (\"set\" substring match)", got)
+	if got != ToolList {
+		t.Errorf("ClassifyTool(get-settings, no required) = %v, want ToolList", got)
 	}
 
 	// "show-config" with no required params — should be ToolList
@@ -129,14 +129,11 @@ func TestClassifyToolMultipleRequiredParams(t *testing.T) {
 }
 
 func TestClassifyToolWriteVerbInResourceName(t *testing.T) {
-	// "list_updates" — "update" substring is in the name, but "list" is not a write verb
-	// BUG: matchesAny checks write verbs first and "update" is a substring match,
-	// so "list_updates" is classified as ToolWrite even though the intent is list.
+	// "list_updates" — "updates" is the resource name, "list" is the verb.
+	// Segment-based matching correctly identifies "list" without false-matching "update".
 	got := ClassifyTool("list_updates", schema(nil, nil))
-	// Current behavior: ToolWrite because "update" substring matches write verbs first.
-	// This is arguably a bug — the "list" prefix should win.
-	if got != ToolWrite {
-		t.Errorf("ClassifyTool(list_updates) = %v, want ToolWrite (known bug: write verb substring in resource name)", got)
+	if got != ToolList {
+		t.Errorf("ClassifyTool(list_updates) = %v, want ToolList", got)
 	}
 }
 
@@ -148,15 +145,15 @@ func TestClassifyToolNilSchema(t *testing.T) {
 }
 
 func TestClassifyToolUnknownVerbWithRequiredParams(t *testing.T) {
-	// "frobulate-widget" contains "get" inside "widget" — classified as ToolGet.
-	// This demonstrates that substring matching can produce surprising results.
+	// "frobulate-widget" — no segment matches any known verb.
+	// With required params and no recognized verb, falls through to ToolWrite (safe default).
 	s := schema(map[string]string{"id": "string"}, []string{"id"})
 	got := ClassifyTool("frobulate-widget", s)
-	if got != ToolGet {
-		t.Errorf("ClassifyTool(frobulate-widget, required) = %v, want ToolGet (\"get\" in \"widget\")", got)
+	if got != ToolWrite {
+		t.Errorf("ClassifyTool(frobulate-widget, required) = %v, want ToolWrite (safe default)", got)
 	}
 
-	// Use a name that truly doesn't contain any verb substrings
+	// Same for another unknown verb
 	s2 := schema(map[string]string{"id": "string"}, []string{"id"})
 	got2 := ClassifyTool("frobnicator", s2)
 	if got2 != ToolWrite {

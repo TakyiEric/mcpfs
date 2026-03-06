@@ -31,12 +31,12 @@ func (c ToolClass) String() string {
 
 // ClassifyTool determines how a tool should be exposed in the filesystem.
 func ClassifyTool(name string, inputSchema json.RawMessage) ToolClass {
-	lower := strings.ToLower(name)
+	segments := splitSegments(name)
 
-	if matchesAny(lower, "create", "update", "delete", "remove", "add", "set", "patch", "put", "post") {
+	if segmentsMatchAny(segments, "create", "update", "delete", "remove", "add", "set", "patch", "put", "post") {
 		return ToolWrite
 	}
-	if matchesAny(lower, "search", "query", "find", "run", "execute") {
+	if segmentsMatchAny(segments, "search", "query", "find", "run", "execute") {
 		return ToolQuery
 	}
 
@@ -45,11 +45,30 @@ func ClassifyTool(name string, inputSchema json.RawMessage) ToolClass {
 		return ToolList
 	}
 
-	if matchesAny(lower, "get", "retrieve", "read", "show", "describe") {
+	if segmentsMatchAny(segments, "get", "retrieve", "read", "show", "describe") {
 		return ToolGet
 	}
 
 	return ToolWrite // safe default
+}
+
+// splitSegments splits a tool name into word segments by - or _.
+func splitSegments(name string) []string {
+	n := strings.ToLower(name)
+	n = strings.ReplaceAll(n, "_", "-")
+	return strings.Split(n, "-")
+}
+
+// segmentsMatchAny returns true if any segment exactly matches a verb.
+func segmentsMatchAny(segments []string, verbs ...string) bool {
+	for _, seg := range segments {
+		for _, v := range verbs {
+			if seg == v {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // ToolToFilename converts a tool name to a filesystem name.
@@ -75,14 +94,6 @@ func RequiredParams(schema json.RawMessage) []string {
 	return s.Required
 }
 
-func matchesAny(name string, verbs ...string) bool {
-	for _, v := range verbs {
-		if strings.Contains(name, v) {
-			return true
-		}
-	}
-	return false
-}
 
 func stripVerb(name string) string {
 	// Normalize separator to hyphen
