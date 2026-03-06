@@ -190,8 +190,14 @@ func (d *dirNode) Getattr(ctx context.Context, fh gofuse.FileHandle, out *fuse.A
 func (d *dirNode) Readdir(ctx context.Context) (gofuse.DirStream, syscall.Errno) {
 	var entries []fuse.DirEntry
 
+	isParamDir := d.tree.template != "" && d.tree.param != ""
 	for name, child := range d.tree.children {
 		if name == "_template_leaf" {
+			continue
+		}
+		// Hide template tail children in param directories — they only
+		// make sense inside resolved dynamic children, not at the param level.
+		if isParamDir && !hasStaticURI(child) {
 			continue
 		}
 		mode := uint32(syscall.S_IFREG | 0444)
@@ -204,13 +210,33 @@ func (d *dirNode) Readdir(ctx context.Context) (gofuse.DirStream, syscall.Errno)
 	return gofuse.NewListDirStream(entries), 0
 }
 
+// hasStaticURI returns true if the tree or any descendant has a non-template URI.
+func hasStaticURI(t *fsTree) bool {
+	if t.uri != "" && !strings.Contains(t.uri, "{") {
+		return true
+	}
+	for _, c := range t.children {
+		if hasStaticURI(c) {
+			return true
+		}
+	}
+	return false
+}
+
 func (d *dirNode) Lookup(ctx context.Context, name string, out *fuse.EntryOut) (*gofuse.Inode, syscall.Errno) {
+	isParamDir := d.tree.template != "" && d.tree.param != ""
+
 	child, ok := d.tree.children[name]
 	if ok {
+		// In param directories, template tail children are not directly
+		// accessible — treat the name as a param value instead.
+		if isParamDir && !hasStaticURI(child) {
+			return d.lookupTemplateChild(ctx, name, out)
+		}
 		return d.buildInode(ctx, name, child, out)
 	}
 
-	if d.tree.template != "" && d.tree.param != "" {
+	if isParamDir {
 		return d.lookupTemplateChild(ctx, name, out)
 	}
 
