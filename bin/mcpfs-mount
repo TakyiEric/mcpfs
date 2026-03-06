@@ -10,7 +10,6 @@
 
 set -euo pipefail
 
-MCPFS_BIN="$(cd "$(dirname "$0")" && pwd)"
 MOUNT_ROOT="/mnt/mcpfs"
 CONFIG="${MCPFS_CONFIG:-$HOME/.config/mcpfs/servers.json}"
 PID_DIR="/tmp/mcpfs-pids"
@@ -38,6 +37,14 @@ fi
 
 mkdir -p "$PID_DIR"
 
+# Ensure mount root exists and is writable
+if [[ ! -d "$MOUNT_ROOT" ]]; then
+    sudo mkdir -p "$MOUNT_ROOT"
+    sudo chown "$USER" "$MOUNT_ROOT"
+elif [[ ! -w "$MOUNT_ROOT" ]]; then
+    sudo chown "$USER" "$MOUNT_ROOT"
+fi
+
 # Load env vars
 if [[ -f "${CONFIG%/*}/env" ]]; then
     set -a
@@ -51,11 +58,11 @@ if [[ -z "${GITHUB_TOKEN:-}" ]] && command -v gh &>/dev/null; then
 fi
 
 echo "mcpfs-mount: starting gateway from $CONFIG"
-"$MCPFS_BIN/mcpfs" --config "$CONFIG" &
+mcpfs --config "$CONFIG" &
 echo "$!" > "$PID_DIR/gateway.pid"
 echo "  gateway pid: $!"
 
-sleep 3
+sleep 8
 
 echo ""
 echo "Mounts:"

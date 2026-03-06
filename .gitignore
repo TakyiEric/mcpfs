@@ -1,13 +1,9 @@
 # Binaries (root only)
 /mcpfs
 /mcpfs-*
-/bin/
-
-# Server binaries in each server dir
-/servers/*/[a-z]*
-!/servers/*/main.go
-!/servers/*/*.go
-!/servers/*/tools.json
+/bin/*
+!/bin/mcpfs-mount
+!/bin/mcpfs-migrate
 
 # IDE
 .idea/
