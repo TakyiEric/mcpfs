@@ -127,7 +127,41 @@ func TestBuildTreeMixedResourcesAndTemplates(t *testing.T) {
 	if !deploys.isDir {
 		t.Error("deployments should be a dir")
 	}
-	// Should have both the static .json file and template capabilities
+	// Template tail children (logs/) should exist in tree but have template URIs
+	if logs, ok := deploys.children["logs"]; ok {
+		if hasStaticURI(logs) {
+			t.Error("logs/ in template param dir should NOT have static URI")
+		}
+	}
+}
+
+func TestHasStaticURI(t *testing.T) {
+	static := &fsTree{children: make(map[string]*fsTree), uri: "vercel://deployments"}
+	if !hasStaticURI(static) {
+		t.Error("static URI should return true")
+	}
+
+	template := &fsTree{children: make(map[string]*fsTree), uri: "vercel://deployments/{url}/logs/build"}
+	if hasStaticURI(template) {
+		t.Error("template URI should return false")
+	}
+
+	dir := newFSTree()
+	dir.isDir = true
+	dir.children["build"] = template
+	if hasStaticURI(dir) {
+		t.Error("dir with only template children should return false")
+	}
+
+	dir.children["static"] = static
+	if !hasStaticURI(dir) {
+		t.Error("dir with static child should return true")
+	}
+
+	empty := &fsTree{children: make(map[string]*fsTree)}
+	if hasStaticURI(empty) {
+		t.Error("empty node should return false")
+	}
 }
 
 func TestResolveURI(t *testing.T) {
