@@ -46,8 +46,7 @@ mount_one() {
         return
     fi
 
-    sudo mkdir -p "$MOUNT_ROOT/$name"
-    sudo chown "$(id -u):$(id -g)" "$MOUNT_ROOT/$name"
+    mkdir -p "$MOUNT_ROOT/$name" 2>/dev/null || { sudo mkdir -p "$MOUNT_ROOT/$name" && sudo chown "$(id -u):$(id -g)" "$MOUNT_ROOT/$name"; }
 
     "$MCPFS_BIN/mcpfs" "$MOUNT_ROOT/$name" -- "$MCPFS_BIN/mcpfs-$name" &
     echo "$!" > "$PID_DIR/$name.pid"
