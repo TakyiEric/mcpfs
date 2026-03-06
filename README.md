@@ -36,16 +36,19 @@ Resources (if the server has them) are also mounted as files.
 # Build and install
 go install github.com/airshelf/mcpfs/cmd/mcpfs@latest
 
-# Mount a single HTTP server
-mcpfs /mnt/mcpfs/posthog --http https://mcp.posthog.com/mcp --auth "Bearer $POSTHOG_API_KEY"
+# Auto-discover Claude Code plugins and mount in project dir
+cd ~/src/myproject
+mcpfs auto                    # mounts to .mcpfs/ in cwd
+mcpfs auto --mount /mnt/mcpfs # or specify a custom mount dir
 
-# Mount a single stdio server
-mcpfs /mnt/mcpfs/stripe -- npx -y @stripe/mcp
+# Mount a single server
+mcpfs .mcpfs/posthog --http https://mcp.posthog.com/mcp --auth "Bearer $POSTHOG_API_KEY"
+mcpfs .mcpfs/stripe -- npx -y @stripe/mcp
 
 # Read
-ls /mnt/mcpfs/posthog/
-cat /mnt/mcpfs/posthog/dashboards.json
-cat /mnt/mcpfs/stripe/balance.json
+ls .mcpfs/posthog/
+cat .mcpfs/posthog/dashboards.json
+cat .mcpfs/stripe/balance.json
 
 # Write (CLI)
 mcpfs tool posthog create-feature-flag --key my-flag --name "My Flag"
@@ -56,7 +59,7 @@ mcpfs tool posthog
 mcpfs tool stripe
 
 # Unmount
-fusermount -u /mnt/mcpfs/posthog
+fusermount -u .mcpfs/posthog
 ```
 
 ## Config file
@@ -86,22 +89,24 @@ Mount multiple servers from a single config (`~/.config/mcpfs/servers.json`):
 Environment variables (`${VAR}`) are interpolated from the process environment or from `~/.config/mcpfs/env`.
 
 ```bash
-# Mount all
+# Mount all to .mcpfs/ in cwd
 mcpfs --config ~/.config/mcpfs/servers.json
 
-# Or use the helper script
-bin/mcpfs-mount        # mount all
-bin/mcpfs-mount -u     # unmount all
+# Mount to custom dir
+mcpfs --config ~/.config/mcpfs/servers.json --mount /mnt/mcpfs
 ```
 
 ## Auto-discover Claude Code plugins
 
-If you use Claude Code, `mcpfs auto` discovers all installed MCP plugins and mounts them automatically:
+If you use Claude Code, `mcpfs auto` discovers all installed MCP plugins and mounts them in your project:
 
 ```bash
-mcpfs auto           # discover + mount all plugins
+cd ~/src/myproject
+mcpfs auto           # discover + mount to .mcpfs/
 mcpfs auto --json    # print discovered config (dry run)
 ```
+
+Mounts to `.mcpfs/` in the current directory. Reads `.env.local` and `.env` from cwd for project-specific credentials (e.g., different Vercel teams, PostHog projects per repo).
 
 It reads from all Claude Code config sources:
 - `~/.claude.json` → `mcpServers` — global user-configured servers
@@ -118,14 +123,14 @@ Non-data plugins (playwright, serena, context7) are skipped automatically.
 
 ```bash
 # Business dashboard
-printf "%-20s %s\n" "Stripe balance" "$(cat /mnt/mcpfs/stripe/balance.json | jq -r '.available[] | "\(.currency) \(.amount / 100)"')"
-printf "%-20s %s\n" "Active subs" "$(cat /mnt/mcpfs/stripe/subscriptions.json | jq '[.[] | select(.status=="active")] | length')"
-printf "%-20s %s\n" "PH dashboards" "$(cat /mnt/mcpfs/posthog/dashboards.json | jq length)"
+printf "%-20s %s\n" "Stripe balance" "$(cat .mcpfs/stripe/balance.json | jq -r '.available[] | "\(.currency) \(.amount / 100)"')"
+printf "%-20s %s\n" "Active subs" "$(cat .mcpfs/stripe/subscriptions.json | jq '[.[] | select(.status=="active")] | length')"
+printf "%-20s %s\n" "PH dashboards" "$(cat .mcpfs/posthog/dashboards.json | jq length)"
 
 # Find paying customers with no analytics activity
 comm -23 \
-  <(cat /mnt/mcpfs/stripe/customers.json | jq -r '.[].email' | sort) \
-  <(cat /mnt/mcpfs/posthog/events.json | jq -r '.[].distinct_id' | sort)
+  <(cat .mcpfs/stripe/customers.json | jq -r '.[].email' | sort) \
+  <(cat .mcpfs/posthog/events.json | jq -r '.[].distinct_id' | sort)
 ```
 
 ## Project structure
